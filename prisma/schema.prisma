@@ -1,0 +1,110 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Challenge {
+  id            String        @id @default(cuid())
+  startDate     DateTime      @db.Date
+  endDate       DateTime      @db.Date
+  passwordHash  String
+  participants  Participant[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Participant {
+  id              String             @id @default(cuid())
+  displayName     String
+  timezone        String             @default("America/Chicago")
+  challengeId     String
+  challenge       Challenge          @relation(fields: [challengeId], references: [id])
+  dailyLogs       DailyLog[]
+  weeklyLogs      WeeklyLog[]
+  biWeeklyLogs    BiWeeklyLog[]
+  monthlyLogs     MonthlyLog[]
+  sundayResetLogs SundayResetLog[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@unique([displayName, challengeId])
+}
+
+model DailyLog {
+  id                  String      @id @default(cuid())
+  participantId       String
+  participant         Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  date                String      // YYYY-MM-DD in the participant's local timezone
+  steps7000           Boolean     @default(false)
+  workout45           Boolean     @default(false)
+  prayerMeditation10  Boolean     @default(false)
+  water80oz           Boolean     @default(false)
+  eatAtHome           Boolean     @default(false)
+  learnRead15         Boolean     @default(false)
+  podcastEpisode      Boolean     @default(false)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@unique([participantId, date])
+}
+
+model WeeklyLog {
+  id                  String      @id @default(cuid())
+  participantId       String
+  participant         Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  weekStart           String      // YYYY-MM-DD, the Monday of the week in the participant's local timezone
+  savings200          Boolean     @default(false)
+  projectHobbyMinutes Int         @default(0)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@unique([participantId, weekStart])
+}
+
+model BiWeeklyLog {
+  id            String      @id @default(cuid())
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  periodStart   String      // YYYY-MM-DD, the start of a two-week period in the participant's local timezone
+  alcoholUsed   Boolean     @default(false)
+  sweetsUsed    Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([participantId, periodStart])
+}
+
+model MonthlyLog {
+  id            String      @id @default(cuid())
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  month         String      // YYYY-MM in the participant's local timezone
+  fastCompleted Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([participantId, month])
+}
+
+model SundayResetLog {
+  id                  String      @id @default(cuid())
+  participantId       String
+  participant         Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  sundayDate          String      // YYYY-MM-DD in the participant's local timezone
+  planWorkouts        Boolean     @default(false)
+  planMeals           Boolean     @default(false)
+  planSavings         Boolean     @default(false)
+  setTop3Goals        Boolean     @default(false)
+  checkProgressReset  Boolean     @default(false)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  @@unique([participantId, sundayDate])
+}
