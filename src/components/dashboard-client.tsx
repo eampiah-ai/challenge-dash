@@ -52,6 +52,8 @@ interface ParticipantData {
   };
   currentStreak: number;
   lastActivityDate: string | null;
+  todayDailyCompleted: number;
+  todayDailyTotal: number;
   last7Days: { date: string; log: DailyLog | null }[];
   currentWeekly: WeeklyLog | null;
   currentBiWeekly: BiWeeklyLog | null;
@@ -125,6 +127,23 @@ function ParticipantCard({ participant: p }: { participant: ParticipantData }) {
           <div className="text-right">
             <p className="text-3xl font-bold text-blue-600">{p.overallCompletion}%</p>
             <p className="text-xs text-gray-500 uppercase tracking-wide">overall</p>
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <div className="flex items-center justify-between text-sm mb-1">
+            <span className="text-gray-700 font-medium">
+              Today: {p.todayDailyCompleted}/{p.todayDailyTotal} daily habits
+            </span>
+            <span className="text-gray-500">
+              {Math.round((p.todayDailyCompleted / p.todayDailyTotal) * 100)}%
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div
+              className="bg-green-500 h-2 rounded-full transition-all"
+              style={{ width: `${(p.todayDailyCompleted / p.todayDailyTotal) * 100}%` }}
+            ></div>
           </div>
         </div>
 

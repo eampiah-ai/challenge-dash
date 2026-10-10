@@ -88,8 +88,8 @@ interface PeriodStatsInput {
 }
 
 function getPeriodStats(
-  startDate: Date,
-  endDate: Date,
+  startDateStr: string,
+  endDateStr: string,
   timezone: string,
   maps: PeriodStatsInput
 ) {
@@ -100,23 +100,24 @@ function getPeriodStats(
     month: string;
     isSunday: boolean;
   }[] = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
   const today = new Date();
-  const limit = end < today ? end : today;
+  const todayStr = formatLocalDate(today, timezone);
+  const limit = endDateStr < todayStr ? endDateStr : todayStr;
 
-  for (let d = new Date(start); d <= limit; d.setDate(d.getDate() + 1)) {
+  const start = new Date(`${startDateStr}T00:00:00`);
+  const end = new Date(`${limit}T00:00:00`);
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const date = formatLocalDate(d, timezone);
     periodKeys.push({
       date,
       weekStart: getMondayOfWeek(date, timezone),
-      periodStart: getBiWeeklyPeriodStart(date, timezone, startDate),
+      periodStart: getBiWeeklyPeriodStart(date, timezone, new Date(`${startDateStr}T00:00:00`)),
       month: getMonthString(date, timezone),
       isSunday: isSunday(date, timezone),
     });
   }
 
-  const todayStr = formatLocalDate(today, timezone);
   const relevantKeys = periodKeys.filter((k) => k.date <= todayStr);
 
   const totalDays = relevantKeys.length;
@@ -143,6 +144,31 @@ function getPeriodStats(
     return log && log.planWorkouts && log.planMeals && log.planSavings && log.setTop3Goals && log.checkProgressReset;
   }).length;
 
+  const habitKeys: (keyof DailyLog)[] = [
+    "steps7000",
+    "workout45",
+    "prayerMeditation10",
+    "water80oz",
+    "eatAtHome",
+    "learnRead15",
+    "podcastEpisode",
+  ];
+
+  const habitCompletion: Record<string, number> = {};
+  for (const key of habitKeys) {
+    const completed = relevantKeys.filter((k) => {
+      const log = maps.dailyMap.get(k.date);
+      return log ? log[key] : false;
+    }).length;
+    habitCompletion[key] = totalDays > 0 ? Math.round((completed / totalDays) * 100) : 0;
+  }
+
+  const dailyHabitAverage = totalDays > 0
+    ? Math.round(
+        habitKeys.reduce((sum, key) => sum + habitCompletion[key], 0) / habitKeys.length
+      )
+    : 0;
+
   return {
     totalDays,
     completedDays,
@@ -152,6 +178,8 @@ function getPeriodStats(
     completedMonths,
     uniqueSundays,
     completedSundays,
+    habitCompletion,
+    dailyHabitAverage,
   };
 }
 
@@ -200,7 +228,7 @@ export async function GET() {
         }
       );
 
-      const dailyCompletion = stats.totalDays > 0 ? Math.round((stats.completedDays / stats.totalDays) * 100) : 0;
+      const dailyCompletion = stats.dailyHabitAverage;
       const weeklyCompletion = stats.uniqueWeeks.length > 0 ? Math.round((stats.completedWeeks / stats.uniqueWeeks.length) * 100) : 0;
       const monthlyCompletion = stats.uniqueMonths.length > 0 ? Math.round((stats.completedMonths / stats.uniqueMonths.length) * 100) : 0;
       const sundayResetCompletion = stats.uniqueSundays.length > 0 ? Math.round((stats.completedSundays / stats.uniqueSundays.length) * 100) : 0;
@@ -216,8 +244,21 @@ export async function GET() {
         log: dailyMap.get(date) || null,
       }));
 
+      const todayLog = dailyMap.get(today);
+      const todayDailyCompleted = todayLog
+        ? [
+            todayLog.steps7000,
+            todayLog.workout45,
+            todayLog.prayerMeditation10,
+            todayLog.water80oz,
+            todayLog.eatAtHome,
+            todayLog.learnRead15,
+            todayLog.podcastEpisode,
+          ].filter(Boolean).length
+        : 0;
+
       const currentWeekStart = getMondayOfWeek(today, timezone);
-      const currentPeriodStart = getBiWeeklyPeriodStart(today, timezone, challenge.startDate);
+      const currentPeriodStart = getBiWeeklyPeriodStart(today, timezone, new Date(`${challenge.startDate}T00:00:00`));
       const currentMonth = getMonthString(today, timezone);
       const lastSunday = last7Days.filter((d) => isSunday(d.date, timezone)).pop()?.date || null;
 
@@ -237,6 +278,8 @@ export async function GET() {
         },
         currentStreak,
         lastActivityDate,
+        todayDailyCompleted,
+        todayDailyTotal: 7,
         last7Days,
         currentWeekly: weeklyMap.get(currentWeekStart) || null,
         currentBiWeekly: biWeeklyMap.get(currentPeriodStart) || null,

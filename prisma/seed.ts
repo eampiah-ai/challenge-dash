@@ -3,6 +3,10 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+function formatDate(date: Date): string {
+  return date.toISOString().split("T")[0];
+}
+
 async function main() {
   const groupPassword = process.env.GROUP_PASSWORD;
   if (!groupPassword) {
@@ -10,8 +14,8 @@ async function main() {
   }
 
   const today = new Date();
-  const startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-  const endDate = new Date(today.getFullYear(), today.getMonth() + 3, 0);
+  const startDate = formatDate(new Date(Date.UTC(today.getFullYear(), today.getMonth(), 1)));
+  const endDate = formatDate(new Date(Date.UTC(today.getFullYear(), today.getMonth() + 3, 0)));
 
   const passwordHash = await bcrypt.hash(groupPassword, 10);
 
@@ -29,7 +33,7 @@ async function main() {
     },
   });
 
-  console.log(`Seeded challenge ${challenge.id}: ${startDate.toDateString()} - ${endDate.toDateString()}`);
+  console.log(`Seeded challenge ${challenge.id}: ${startDate} - ${endDate}`);
 }
 
 main()

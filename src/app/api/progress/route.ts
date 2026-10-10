@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import {
-  formatLocalDate,
   getMondayOfWeek,
   getMonthString,
   getBiWeeklyPeriodStart,
@@ -36,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     const timezone = participant.timezone;
     const weekStart = getMondayOfWeek(date, timezone);
-    const periodStart = getBiWeeklyPeriodStart(date, timezone, participant.challenge.startDate);
+    const periodStart = getBiWeeklyPeriodStart(date, timezone, new Date(`${participant.challenge.startDate}T00:00:00`));
     const month = getMonthString(date, timezone);
 
     const [daily, weekly, biWeekly, monthly, sundayReset] = await Promise.all([
@@ -87,14 +86,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Date is required" }, { status: 400 });
     }
 
-    const timezone = participant.timezone;
-    const challengeStart = formatLocalDate(participant.challenge.startDate, timezone);
-    const challengeEnd = formatLocalDate(participant.challenge.endDate, timezone);
-
-    if (date < challengeStart || date > challengeEnd) {
+    if (date < participant.challenge.startDate || date > participant.challenge.endDate) {
       return NextResponse.json({ error: "Date is outside the challenge window" }, { status: 400 });
     }
 
+    const timezone = participant.timezone;
     const results: Record<string, unknown> = {};
 
     if (daily && typeof daily === "object") {
@@ -145,7 +141,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (biWeekly && typeof biWeekly === "object") {
-      const periodStart = getBiWeeklyPeriodStart(date, timezone, participant.challenge.startDate);
+      const periodStart = getBiWeeklyPeriodStart(date, timezone, new Date(`${participant.challenge.startDate}T00:00:00`));
       results.biWeekly = await prisma.biWeeklyLog.upsert({
         where: {
           participantId_periodStart: { participantId: participant.id, periodStart },

@@ -12,8 +12,9 @@ datasource db {
 
 model Challenge {
   id            String        @id @default(cuid())
-  startDate     DateTime      @db.Date
-  endDate       DateTime      @db.Date
+  startDate     String        // YYYY-MM-DD in the challenge's local timezone
+  endDate       String        // YYYY-MM-DD in the challenge's local timezone
+  timezone      String        @default("America/Chicago")
   passwordHash  String
   participants  Participant[]
   createdAt     DateTime      @default(now())
