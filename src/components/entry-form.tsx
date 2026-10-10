@@ -9,7 +9,6 @@ import {
 } from "@/lib/dates";
 
 interface EntryFormProps {
-  displayName: string;
   timezone: string;
   defaultDate: string;
 }
@@ -25,7 +24,6 @@ const dailyHabits = [
 ];
 
 export function EntryForm({
-  displayName,
   timezone,
   defaultDate,
 }: EntryFormProps) {
@@ -168,10 +166,7 @@ export function EntryForm({
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Log Progress</h1>
-        <span className="text-sm text-gray-500">Hello, {displayName}</span>
-      </div>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Log Progress</h1>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         <div>
@@ -358,22 +353,13 @@ export function EntryForm({
         {error && <p className="text-red-600 text-sm">{error}</p>}
         {message && <p className="text-green-600 text-sm">{message}</p>}
 
-        <div className="flex items-center gap-4">
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 bg-blue-600 text-white font-medium py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? "Saving..." : "Save Progress"}
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push("/dashboard")}
-            className="px-6 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            Dashboard
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white font-medium py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? "Saving..." : "Save Progress"}
+        </button>
       </form>
     </div>
   );
