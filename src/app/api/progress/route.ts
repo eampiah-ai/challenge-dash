@@ -11,6 +11,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function toInt(value: unknown, fallback = 0): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : fallback;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getSession();
@@ -79,6 +84,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Participant not found" }, { status: 404 });
     }
 
+    const challenge = participant.challenge;
     const body = await request.json();
     const { date, daily, weekly, biWeekly, monthly, sundayReset } = body;
 
@@ -86,7 +92,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Date is required" }, { status: 400 });
     }
 
-    if (date < participant.challenge.startDate || date > participant.challenge.endDate) {
+    if (date < challenge.startDate || date > challenge.endDate) {
       return NextResponse.json({ error: "Date is outside the challenge window" }, { status: 400 });
     }
 
@@ -130,18 +136,18 @@ export async function POST(request: NextRequest) {
         create: {
           participantId: participant.id,
           weekStart,
-          savings200: !!weekly.savings200,
-          projectHobbyMinutes: Number(weekly.projectHobbyMinutes) || 0,
+          savingsAmount: toInt(weekly.savingsAmount),
+          projectHobbyMinutes: toInt(weekly.projectHobbyMinutes),
         },
         update: {
-          savings200: !!weekly.savings200,
-          projectHobbyMinutes: Number(weekly.projectHobbyMinutes) || 0,
+          savingsAmount: toInt(weekly.savingsAmount),
+          projectHobbyMinutes: toInt(weekly.projectHobbyMinutes),
         },
       });
     }
 
     if (biWeekly && typeof biWeekly === "object") {
-      const periodStart = getBiWeeklyPeriodStart(date, timezone, new Date(`${participant.challenge.startDate}T00:00:00`));
+      const periodStart = getBiWeeklyPeriodStart(date, timezone, new Date(`${challenge.startDate}T00:00:00`));
       results.biWeekly = await prisma.biWeeklyLog.upsert({
         where: {
           participantId_periodStart: { participantId: participant.id, periodStart },
@@ -149,12 +155,12 @@ export async function POST(request: NextRequest) {
         create: {
           participantId: participant.id,
           periodStart,
-          alcoholUsed: !!biWeekly.alcoholUsed,
-          sweetsUsed: !!biWeekly.sweetsUsed,
+          alcoholCount: toInt(biWeekly.alcoholCount),
+          sweetsCount: toInt(biWeekly.sweetsCount),
         },
         update: {
-          alcoholUsed: !!biWeekly.alcoholUsed,
-          sweetsUsed: !!biWeekly.sweetsUsed,
+          alcoholCount: toInt(biWeekly.alcoholCount),
+          sweetsCount: toInt(biWeekly.sweetsCount),
         },
       });
     }

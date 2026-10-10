@@ -23,6 +23,11 @@ const dailyHabits = [
   { key: "podcastEpisode", label: "Podcast — 1 episode (Mon–Thu)" },
 ];
 
+function toInt(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0;
+}
+
 export function EntryForm({
   timezone,
   defaultDate,
@@ -30,8 +35,8 @@ export function EntryForm({
   const router = useRouter();
   const [date, setDate] = useState(defaultDate);
   const [daily, setDaily] = useState<Record<string, boolean>>({});
-  const [weekly, setWeekly] = useState({ savings200: false, projectHobbyMinutes: 0 });
-  const [biWeekly, setBiWeekly] = useState({ alcoholUsed: false, sweetsUsed: false });
+  const [weekly, setWeekly] = useState({ savingsAmount: 0, projectHobbyMinutes: 0 });
+  const [biWeekly, setBiWeekly] = useState({ alcoholCount: 0, sweetsCount: 0 });
   const [monthly, setMonthly] = useState({ fastCompleted: false });
   const [sundayReset, setSundayReset] = useState({
     planWorkouts: false,
@@ -74,19 +79,19 @@ export function EntryForm({
         }
         if (data.weekly) {
           setWeekly({
-            savings200: data.weekly.savings200,
+            savingsAmount: data.weekly.savingsAmount,
             projectHobbyMinutes: data.weekly.projectHobbyMinutes,
           });
         } else {
-          setWeekly({ savings200: false, projectHobbyMinutes: 0 });
+          setWeekly({ savingsAmount: 0, projectHobbyMinutes: 0 });
         }
         if (data.biWeekly) {
           setBiWeekly({
-            alcoholUsed: data.biWeekly.alcoholUsed,
-            sweetsUsed: data.biWeekly.sweetsUsed,
+            alcoholCount: data.biWeekly.alcoholCount,
+            sweetsCount: data.biWeekly.sweetsCount,
           });
         } else {
-          setBiWeekly({ alcoholUsed: false, sweetsUsed: false });
+          setBiWeekly({ alcoholCount: 0, sweetsCount: 0 });
         }
         if (data.monthly) {
           setMonthly({ fastCompleted: data.monthly.fastCompleted });
@@ -146,8 +151,7 @@ export function EntryForm({
       if (!res.ok) {
         setError(data.error || "Failed to save progress");
       } else {
-        setMessage("Progress saved!");
-        router.refresh();
+        router.push("/profile");
       }
     } catch {
       setError("Failed to save progress");
@@ -166,7 +170,16 @@ export function EntryForm({
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Log Progress</h1>
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1 rounded-lg hover:bg-gray-100"
+        >
+          ← Back
+        </button>
+        <h1 className="text-2xl font-bold text-gray-900">Log Progress</h1>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         <div>
@@ -214,17 +227,21 @@ export function EntryForm({
               due this week
             </span>
           </div>
-          <label className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white cursor-pointer mb-3">
-            <span className="text-gray-700">Save $200</span>
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Amount saved this week ($)
+            </label>
             <input
-              type="checkbox"
-              checked={weekly.savings200}
+              type="number"
+              min={0}
+              step="1"
+              value={weekly.savingsAmount}
               onChange={(e) =>
-                setWeekly((prev) => ({ ...prev, savings200: e.target.checked }))
+                setWeekly((prev) => ({ ...prev, savingsAmount: toInt(e.target.value) }))
               }
-              className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500"
             />
-          </label>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Project / hobby minutes this week
@@ -236,7 +253,7 @@ export function EntryForm({
               onChange={(e) =>
                 setWeekly((prev) => ({
                   ...prev,
-                  projectHobbyMinutes: Number(e.target.value) || 0,
+                  projectHobbyMinutes: toInt(e.target.value),
                 }))
               }
               className="block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500"
@@ -251,28 +268,34 @@ export function EntryForm({
               1 per 2 weeks
             </span>
           </div>
-          <label className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white cursor-pointer mb-2">
-            <span className="text-gray-700">Alcohol — 1 drink used</span>
+          <div className="mb-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Drinks this 2-week period
+            </label>
             <input
-              type="checkbox"
-              checked={biWeekly.alcoholUsed}
+              type="number"
+              min={0}
+              value={biWeekly.alcoholCount}
               onChange={(e) =>
-                setBiWeekly((prev) => ({ ...prev, alcoholUsed: e.target.checked }))
+                setBiWeekly((prev) => ({ ...prev, alcoholCount: toInt(e.target.value) }))
               }
-              className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500"
             />
-          </label>
-          <label className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-white cursor-pointer">
-            <span className="text-gray-700">Sweets — 1 sweet used</span>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Sweets this 2-week period
+            </label>
             <input
-              type="checkbox"
-              checked={biWeekly.sweetsUsed}
+              type="number"
+              min={0}
+              value={biWeekly.sweetsCount}
               onChange={(e) =>
-                setBiWeekly((prev) => ({ ...prev, sweetsUsed: e.target.checked }))
+                setBiWeekly((prev) => ({ ...prev, sweetsCount: toInt(e.target.value) }))
               }
-              className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="block w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500"
             />
-          </label>
+          </div>
         </section>
 
         <section

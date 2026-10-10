@@ -11,14 +11,17 @@ datasource db {
 }
 
 model Challenge {
-  id            String        @id @default(cuid())
-  startDate     String        // YYYY-MM-DD in the challenge's local timezone
-  endDate       String        // YYYY-MM-DD in the challenge's local timezone
-  timezone      String        @default("America/Chicago")
-  passwordHash  String
-  participants  Participant[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                String        @id @default(cuid())
+  startDate         String        // YYYY-MM-DD in the challenge's local timezone
+  endDate           String        // YYYY-MM-DD in the challenge's local timezone
+  timezone          String        @default("America/Chicago")
+  passwordHash      String
+  savingsGoal       Int           @default(200)
+  alcoholAllowance  Int           @default(1)
+  sweetsAllowance   Int           @default(1)
+  participants      Participant[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 }
 
 model Participant {
@@ -61,7 +64,7 @@ model WeeklyLog {
   participantId       String
   participant         Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   weekStart           String      // YYYY-MM-DD, the Monday of the week in the participant's local timezone
-  savings200          Boolean     @default(false)
+  savingsAmount       Int         @default(0)
   projectHobbyMinutes Int         @default(0)
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
@@ -74,8 +77,8 @@ model BiWeeklyLog {
   participantId String
   participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
   periodStart   String      // YYYY-MM-DD, the start of a two-week period in the participant's local timezone
-  alcoholUsed   Boolean     @default(false)
-  sweetsUsed    Boolean     @default(false)
+  alcoholCount  Int         @default(0)
+  sweetsCount   Int         @default(0)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 

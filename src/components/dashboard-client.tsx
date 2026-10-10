@@ -15,14 +15,14 @@ interface DailyLog {
 
 interface WeeklyLog {
   weekStart: string;
-  savings200: boolean;
+  savingsAmount: number;
   projectHobbyMinutes: number;
 }
 
 interface BiWeeklyLog {
   periodStart: string;
-  alcoholUsed: boolean;
-  sweetsUsed: boolean;
+  alcoholCount: number;
+  sweetsCount: number;
 }
 
 interface MonthlyLog {
@@ -39,17 +39,16 @@ interface SundayResetLog {
   checkProgressReset: boolean;
 }
 
+interface ChallengeGoals {
+  savingsGoal: number;
+  alcoholAllowance: number;
+  sweetsAllowance: number;
+}
+
 interface ParticipantData {
   id: string;
   displayName: string;
   timezone: string;
-  overallCompletion: number;
-  breakdown: {
-    daily: number;
-    weekly: number;
-    monthly: number;
-    sundayReset: number;
-  };
   currentStreak: number;
   lastActivityDate: string | null;
   todayDailyCompleted: number;
@@ -59,6 +58,7 @@ interface ParticipantData {
   currentBiWeekly: BiWeeklyLog | null;
   currentMonthly: MonthlyLog | null;
   lastSundayReset: SundayResetLog | null;
+  challenge: ChallengeGoals;
 }
 
 const dailyHabits: { key: keyof DailyLog; label: string }[] = [
@@ -110,11 +110,26 @@ export function DashboardClient() {
   );
 }
 
-function ParticipantCard({ participant: p }: { participant: ParticipantData }) {
+export function ParticipantCard({ participant: p }: { participant: ParticipantData }) {
+  const weeklyProjectDone = Math.min(p.currentWeekly?.projectHobbyMinutes || 0, 120);
+  const sundayResetDone = p.lastSundayReset
+    ? [
+        p.lastSundayReset.planWorkouts,
+        p.lastSundayReset.planMeals,
+        p.lastSundayReset.planSavings,
+        p.lastSundayReset.setTop3Goals,
+        p.lastSundayReset.checkProgressReset,
+      ].filter(Boolean).length
+    : 0;
+
+  const savingsGoal = p.challenge.savingsGoal;
+  const alcoholAllowance = p.challenge.alcoholAllowance;
+  const sweetsAllowance = p.challenge.sweetsAllowance;
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       <div className="p-6 border-b border-gray-100">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-bold text-gray-900">{p.displayName}</h2>
             <p className="text-sm text-gray-500">
@@ -124,34 +139,55 @@ function ParticipantCard({ participant: p }: { participant: ParticipantData }) {
               )}
             </p>
           </div>
-          <div className="text-right">
-            <p className="text-3xl font-bold text-blue-600">{p.overallCompletion}%</p>
-            <p className="text-xs text-gray-500 uppercase tracking-wide">overall</p>
-          </div>
         </div>
 
-        <div className="mb-4">
-          <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-gray-700 font-medium">
-              Today: {p.todayDailyCompleted}/{p.todayDailyTotal} daily habits
-            </span>
-            <span className="text-gray-500">
-              {Math.round((p.todayDailyCompleted / p.todayDailyTotal) * 100)}%
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-green-500 h-2 rounded-full transition-all"
-              style={{ width: `${(p.todayDailyCompleted / p.todayDailyTotal) * 100}%` }}
-            ></div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <MiniStat label="Daily" value={p.breakdown.daily} />
-          <MiniStat label="Weekly" value={p.breakdown.weekly} />
-          <MiniStat label="Monthly" value={p.breakdown.monthly} />
-          <MiniStat label="Sunday Reset" value={p.breakdown.sundayReset} />
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+          <RingStat
+            label="Daily habits"
+            completed={p.todayDailyCompleted}
+            total={p.todayDailyTotal}
+            pass={p.todayDailyCompleted >= p.todayDailyTotal}
+          />
+          <RingStat
+            label="Savings"
+            completed={p.currentWeekly?.savingsAmount || 0}
+            total={savingsGoal}
+            unit="$"
+            pass={(p.currentWeekly?.savingsAmount || 0) >= savingsGoal}
+          />
+          <RingStat
+            label="Project time"
+            completed={weeklyProjectDone}
+            total={120}
+            unit="min"
+            pass={weeklyProjectDone >= 120}
+          />
+          <RingStat
+            label="Alcohol"
+            completed={p.currentBiWeekly?.alcoholCount || 0}
+            total={alcoholAllowance}
+            pass={(p.currentBiWeekly?.alcoholCount || 0) <= alcoholAllowance}
+            failOver
+          />
+          <RingStat
+            label="Sweets"
+            completed={p.currentBiWeekly?.sweetsCount || 0}
+            total={sweetsAllowance}
+            pass={(p.currentBiWeekly?.sweetsCount || 0) <= sweetsAllowance}
+            failOver
+          />
+          <RingStat
+            label="Monthly fast"
+            completed={p.currentMonthly?.fastCompleted ? 1 : 0}
+            total={1}
+            pass={p.currentMonthly?.fastCompleted || false}
+          />
+          <RingStat
+            label="Sunday reset"
+            completed={sundayResetDone}
+            total={5}
+            pass={sundayResetDone >= 5}
+          />
         </div>
       </div>
 
@@ -200,24 +236,21 @@ function ParticipantCard({ participant: p }: { participant: ParticipantData }) {
         </section>
 
         <div className="grid md:grid-cols-2 gap-4">
-          <StatusCard title="This Week" done={p.currentWeekly?.savings200 && p.currentWeekly?.projectHobbyMinutes >= 120}>
+          <StatusCard title="This Week" done={(p.currentWeekly?.savingsAmount || 0) >= savingsGoal && (p.currentWeekly?.projectHobbyMinutes || 0) >= 120}>
             <p className="text-sm text-gray-600">
-              Save $200: {p.currentWeekly?.savings200 ? "Done" : "Not done"}
+              Savings: ${p.currentWeekly?.savingsAmount || 0} / ${savingsGoal}
             </p>
             <p className="text-sm text-gray-600">
-              Project/hobby: {p.currentWeekly?.projectHobbyMinutes || 0} min
-              {p.currentWeekly && p.currentWeekly.projectHobbyMinutes >= 120 && (
-                <span className="text-green-600 ml-1">✓</span>
-              )}
+              Project/hobby: {p.currentWeekly?.projectHobbyMinutes || 0} / 120 min
             </p>
           </StatusCard>
 
-          <StatusCard title="This 2-Week Period" done={!!p.currentBiWeekly}>
+          <StatusCard title="This 2-Week Period" done={(p.currentBiWeekly?.alcoholCount || 0) <= alcoholAllowance && (p.currentBiWeekly?.sweetsCount || 0) <= sweetsAllowance}>
             <p className="text-sm text-gray-600">
-              Alcohol used: {p.currentBiWeekly?.alcoholUsed ? "Yes" : "No"}
+              Alcohol: {p.currentBiWeekly?.alcoholCount || 0} / {alcoholAllowance} allowed
             </p>
             <p className="text-sm text-gray-600">
-              Sweets used: {p.currentBiWeekly?.sweetsUsed ? "Yes" : "No"}
+              Sweets: {p.currentBiWeekly?.sweetsCount || 0} / {sweetsAllowance} allowed
             </p>
           </StatusCard>
 
@@ -227,7 +260,7 @@ function ParticipantCard({ participant: p }: { participant: ParticipantData }) {
             </p>
           </StatusCard>
 
-          <StatusCard title="Last Sunday Reset" done={p.lastSundayReset?.planWorkouts && p.lastSundayReset?.planMeals && p.lastSundayReset?.planSavings && p.lastSundayReset?.setTop3Goals && p.lastSundayReset?.checkProgressReset}>
+          <StatusCard title="Last Sunday Reset" done={sundayResetDone >= 5}>
             {p.lastSundayReset ? (
               <ul className="text-sm text-gray-600 space-y-1">
                 <li>Plan workouts: {p.lastSundayReset.planWorkouts ? "✓" : "—"}</li>
@@ -246,11 +279,68 @@ function ParticipantCard({ participant: p }: { participant: ParticipantData }) {
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: number }) {
+function RingStat({
+  label,
+  completed,
+  total,
+  unit = "",
+  pass,
+  failOver,
+}: {
+  label: string;
+  completed: number;
+  total: number;
+  unit?: string;
+  pass: boolean;
+  failOver?: boolean;
+}) {
+  const safeTotal = Math.max(total, 1);
+  const displayCompleted = failOver ? completed : Math.min(completed, total);
+  const percentage = Math.min(100, Math.round((displayCompleted / safeTotal) * 100));
+  const isFail = failOver && completed > total;
+  const radius = 24;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  const ringColor = isFail ? "text-red-500" : pass ? "text-green-500" : "text-blue-500";
+
   return (
-    <div className="bg-gray-50 rounded-lg p-3">
-      <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
-      <p className="text-lg font-semibold text-gray-900">{value}%</p>
+    <div className="flex flex-col items-center text-center">
+      <div className="relative w-16 h-16 mb-2">
+        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 60 60">
+          <circle
+            cx="30"
+            cy="30"
+            r={radius}
+            stroke="currentColor"
+            strokeWidth="5"
+            fill="transparent"
+            className="text-gray-200"
+          />
+          <circle
+            cx="30"
+            cy="30"
+            r={radius}
+            stroke="currentColor"
+            strokeWidth="5"
+            fill="transparent"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            className={`${ringColor} transition-all duration-500`}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className={`text-xs font-bold ${isFail ? "text-red-600" : "text-gray-900"}`}>
+            {unit === "$" && "$"}
+            {displayCompleted}
+            {unit && unit !== "$" && <span className="text-[10px] font-normal">{unit}</span>}
+            <span className="text-[10px] font-normal text-gray-500">/{total}{unit === "$" ? "$" : unit}</span>
+          </span>
+        </div>
+      </div>
+      <p className="text-[10px] font-medium text-gray-700 uppercase tracking-wide text-center leading-tight">{label}</p>
+      {isFail && <p className="text-[10px] text-red-600 mt-1">Over limit</p>}
     </div>
   );
 }
